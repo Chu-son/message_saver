@@ -2,9 +2,30 @@
 
 import os
 import numpy as np
+
+from typing import List
+import datetime
+import dataclasses
+import yaml
+import argparse
+
 import pyautogui
 import cv2
-from typing import List
+
+
+@dataclasses.dataclass
+class Parameters:
+    ROI: List[int] = None
+
+    def load_from_yaml(self, filename: str):
+        with open(filename, 'r') as f:
+            params = yaml.safe_load(f)
+
+        self.ROI = params['ROI']
+
+    def save_to_yaml(self, filename: str):
+        with open(filename, 'w') as f:
+            yaml.dump(dataclasses.asdict(self), f)
 
 
 class ScrollEndChecker:
@@ -33,16 +54,16 @@ class ScrollEndChecker:
         cv2.waitKey(1)
 
         # if np.array_equal(self.prev_img, img):
-            # return True
-        
-        # check image difference. 95% of pixels are same, then return True
+        # return True
+
+        # check image difference.
         diff = cv2.absdiff(self.prev_img, img)
         diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
         diff = diff.astype(np.float32)
         diff = diff / 255.0
         diff = np.mean(diff)
         print(diff)
-        if diff < 0.05:
+        if diff < 0.005:
             return True
 
         self.prev_img = img
@@ -70,10 +91,19 @@ class ImageSaver:
         cv2.imwrite(filename, img)
         self.index += 1
 
+    @classmethod
+    def get_datetime(cls) -> str:
+        now = datetime.datetime.now()
+        return now.strftime('%Y%m%d_%H%M%S')
+
 
 class SakaMessageSaver:
-    def __init__(self, directory: str, filename_base: str):
+    def __init__(self, directory: str, filename_base: str, params: Parameters):
         self.image_saver = ImageSaver(directory, filename_base)
+        self.params = params
+
+        if self.params.ROI is None:
+            self.params.ROI = self.get_roi()
 
     def get_roi(self) -> List[int]:
         # get screen shot
@@ -98,7 +128,16 @@ class SakaMessageSaver:
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-        return roi[0], roi[1], roi[2], roi[3]
+        return [roi[0], roi[1], roi[2], roi[3]]
+
+    def _move_mouse_to_scroll_position(self, roi: List[int]):
+        pyautogui.moveTo(roi[0] + roi[2] / 2, roi[1] + roi[3] / 2)
+
+    def _scroll(self, roi: List[int]):
+        self._move_mouse_to_scroll_position(roi)
+        pyautogui.sleep(0.15)
+        pyautogui.scroll(-10)
+        pyautogui.sleep(1)
 
     def _get_screenshot(self, roi: List[int]) -> np.ndarray:
         # get screen shot
@@ -111,34 +150,51 @@ class SakaMessageSaver:
         return img
 
     def run(self):
-        # get roi
-        roi = self.get_roi()
-
         check_area_scale = 1 / 3
-        check_roi = [0, roi[3] * (1 - check_area_scale), roi[2], roi[3]]
+        check_roi = [0, self.params.ROI[3] *
+                     (1 - check_area_scale), self.params.ROI[2], self.params.ROI[3]]
         check_roi = [int(x) for x in check_roi]
         scroll_end_checker = ScrollEndChecker(roi=check_roi)
 
         # mouse move to center of roi
-        pyautogui.moveTo(roi[0] + roi[2] / 2, roi[1] + roi[3] / 2)
+        self._move_mouse_to_scroll_position(self.params.ROI)
 
         # scroll
         while True:
-            screenshot = self._get_screenshot(roi)
+            screenshot = self._get_screenshot(self.params.ROI)
 
             self.image_saver.save(screenshot)
 
             if scroll_end_checker.check(screenshot):
                 break
 
-            pyautogui.moveTo(roi[0] + roi[2] / 2, roi[1] + roi[3] / 2)
-            pyautogui.scroll(-10)
-            pyautogui.sleep(1)
+            self._scroll(self.params.ROI)
 
         print('scroll end')
 
 
 if __name__ == '__main__':
-    saver = SakaMessageSaver(directory='images/test',
-                             filename_base='image')
+    parser = argparse.ArgumentParser()
+    # params file --params_file or -p
+    parser.add_argument('--params_file', '-p', type=str, default='params.yaml')
+    # save params --save_params or -s
+    parser.add_argument('--save_params', '-s', action='store_true')
+    # load params --load_params or -l
+    parser.add_argument('--load_params', '-l', action='store_true')
+
+    args = parser.parse_args()
+
+    params = Parameters()
+    if args.load_params:
+        if not os.path.exists(args.params_file):
+            raise FileNotFoundError(f'{args.params_file} is not found.')
+
+        params.load_from_yaml(args.params_file)
+
+    saver = SakaMessageSaver(directory=f'../images/test/{ImageSaver.get_datetime()}',
+                             filename_base='image',
+                             params=params)
     saver.run()
+
+    if args.save_params:
+        params.save_to_yaml(args.params_file)
