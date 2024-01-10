@@ -33,7 +33,7 @@ class ScrollEndChecker:
         self.roi = roi
         self.prev_img = None
 
-    def check(self, img: np.ndarray) -> bool:
+    def check(self, img: np.ndarray, threshold: float = 0.005) -> bool:
         img = np.array(img)
 
         if self.roi is None:
@@ -63,7 +63,7 @@ class ScrollEndChecker:
         diff = diff / 255.0
         diff = np.mean(diff)
         print(diff)
-        if diff < 0.005:
+        if diff < threshold:
             return True
 
         self.prev_img = img
@@ -156,8 +156,19 @@ class SakaMessageSaver:
 
         return img
 
+    def _wait_for_image_load_done(self, max_try: int = 6):
+        load_done_checker = ScrollEndChecker()
+
+        for _ in range(max_try):
+            screenshot = self._get_screenshot(self.params.ROI)
+            if load_done_checker.check(screenshot):
+                break
+            pyautogui.sleep(0.2)
+
     def run(self):
         while True:
+            self._wait_for_image_load_done()
+
             screenshot = self._get_screenshot(self.params.ROI)
 
             self.image_saver.save(screenshot)
