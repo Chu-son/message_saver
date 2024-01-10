@@ -105,6 +105,13 @@ class SakaMessageSaver:
         if self.params.ROI is None:
             self.params.ROI = self.get_roi()
 
+        # check_area_scale = 1 / 3
+        # check_roi = [0, self.params.ROI[3] *
+        #              (1 - check_area_scale), self.params.ROI[2], self.params.ROI[3]]
+        # check_roi = [int(x) for x in check_roi]
+        # self.scroll_end_checker = ScrollEndChecker(roi=check_roi)
+        self.scroll_end_checker = ScrollEndChecker()
+
     def get_roi(self) -> List[int]:
         # get screen shot
         img = pyautogui.screenshot()
@@ -150,27 +157,29 @@ class SakaMessageSaver:
         return img
 
     def run(self):
-        check_area_scale = 1 / 3
-        check_roi = [0, self.params.ROI[3] *
-                     (1 - check_area_scale), self.params.ROI[2], self.params.ROI[3]]
-        check_roi = [int(x) for x in check_roi]
-        scroll_end_checker = ScrollEndChecker(roi=check_roi)
-
-        # mouse move to center of roi
-        self._move_mouse_to_scroll_position(self.params.ROI)
-
-        # scroll
         while True:
             screenshot = self._get_screenshot(self.params.ROI)
 
             self.image_saver.save(screenshot)
 
-            if scroll_end_checker.check(screenshot):
+            if self.scroll_end_checker.check(screenshot):
                 break
 
             self._scroll(self.params.ROI)
 
         print('scroll end')
+
+
+class SakaMessagePhotoSaver(SakaMessageSaver):
+    def __init__(self, directory: str, filename_base: str, params: Parameters):
+        super().__init__(directory, filename_base, params)
+
+    # override _scroll method. drag left.
+    def _scroll(self, roi: List[int]):
+        self._move_mouse_to_scroll_position(roi)
+        # pyautogui.sleep(0.15)
+        pyautogui.drag(-1000, 0, 0.3, button='left')
+        pyautogui.sleep(1)
 
 
 if __name__ == '__main__':
@@ -181,6 +190,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_params', '-s', action='store_true')
     # load params --load_params or -l
     parser.add_argument('--load_params', '-l', action='store_true')
+    # photo mode --photo
+    parser.add_argument('--photo', action='store_true')
 
     args = parser.parse_args()
 
@@ -191,9 +202,16 @@ if __name__ == '__main__':
 
         params.load_from_yaml(args.params_file)
 
-    saver = SakaMessageSaver(directory=f'../images/test/{ImageSaver.get_datetime()}',
-                             filename_base='image',
-                             params=params)
+    directory = f'../images/test/{ImageSaver.get_datetime()}'
+    filename_base = 'image'
+    if args.photo:
+        saver = SakaMessagePhotoSaver(directory=directory,
+                                      filename_base=filename_base,
+                                      params=params)
+    else:
+        saver = SakaMessageSaver(directory=directory,
+                                 filename_base=filename_base,
+                                 params=params)
     saver.run()
 
     if args.save_params:
