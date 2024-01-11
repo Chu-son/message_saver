@@ -31,11 +31,12 @@ class Parameters:
 class ScrollEndChecker:
     DEBUG = False
 
+
     def __init__(self, roi: List[int] = None):
         self.roi = roi
         self.prev_img = None
 
-    def check(self, img: np.ndarray, threshold: float = 0.005) -> bool:
+    def check(self, img: np.ndarray, threshold: float = 0.0001) -> bool:
         img = np.array(img)
 
         if self.roi is None:
@@ -65,7 +66,7 @@ class ScrollEndChecker:
         diff = diff.astype(np.float32)
         diff = diff / 255.0
         diff = np.mean(diff)
-        print(diff)
+        print(f'diff: {diff:.5f}')
         if diff < threshold:
             return True
 
@@ -150,7 +151,7 @@ class SakaMessageSaver:
         self._move_mouse_to_scroll_position(roi)
         # pyautogui.sleep(0.15)
         pyautogui.scroll(-10)
-        pyautogui.sleep(0.2)
+        pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
 
     def _get_screenshot(self, roi: List[int]) -> np.ndarray:
@@ -174,7 +175,11 @@ class SakaMessageSaver:
 
     def run(self):
         while True:
+            print(f"scroll {self.image_saver.index} times.")
+
+            print('wait for image load done...')
             self._wait_for_image_load_done()
+            print('done.')
 
             screenshot = self._get_screenshot(self.params.ROI)
 
@@ -185,7 +190,7 @@ class SakaMessageSaver:
 
             self._scroll(self.params.ROI)
 
-        print('scroll end')
+        print('FINISHED!!')
 
 
 class SakaMessagePhotoSaver(SakaMessageSaver):
@@ -197,7 +202,7 @@ class SakaMessagePhotoSaver(SakaMessageSaver):
         self._move_mouse_to_scroll_position(roi)
         # pyautogui.sleep(0.15)
         pyautogui.drag(-1000, 0, 0.3, button='left')
-        pyautogui.sleep(0.2)
+        pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
 
 
