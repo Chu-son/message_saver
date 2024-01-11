@@ -29,6 +29,8 @@ class Parameters:
 
 
 class ScrollEndChecker:
+    DEBUG = False
+
     def __init__(self, roi: List[int] = None):
         self.roi = roi
         self.prev_img = None
@@ -47,11 +49,12 @@ class ScrollEndChecker:
             return False
 
         # show image for debug
-        cv2.namedWindow('check image', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('prev image', cv2.WINDOW_NORMAL)
-        cv2.imshow('check image', img)
-        cv2.imshow('prev image', self.prev_img)
-        cv2.waitKey(1)
+        if self.DEBUG:
+            cv2.namedWindow('check image', cv2.WINDOW_NORMAL)
+            cv2.namedWindow('prev image', cv2.WINDOW_NORMAL)
+            cv2.imshow('check image', img)
+            cv2.imshow('prev image', self.prev_img)
+            cv2.waitKey(1)
 
         # if np.array_equal(self.prev_img, img):
         # return True
@@ -140,11 +143,15 @@ class SakaMessageSaver:
     def _move_mouse_to_scroll_position(self, roi: List[int]):
         pyautogui.moveTo(roi[0] + roi[2] / 2, roi[1] + roi[3] / 2)
 
+    def _move_mouse_to_out_of_roi(self, roi: List[int]):
+        pyautogui.moveTo(roi[0] + roi[2], roi[1] + roi[3])
+
     def _scroll(self, roi: List[int]):
         self._move_mouse_to_scroll_position(roi)
-        pyautogui.sleep(0.15)
+        # pyautogui.sleep(0.15)
         pyautogui.scroll(-10)
-        pyautogui.sleep(1)
+        pyautogui.sleep(0.2)
+        self._move_mouse_to_out_of_roi(roi)
 
     def _get_screenshot(self, roi: List[int]) -> np.ndarray:
         # get screen shot
@@ -156,7 +163,7 @@ class SakaMessageSaver:
 
         return img
 
-    def _wait_for_image_load_done(self, max_try: int = 6):
+    def _wait_for_image_load_done(self, max_try: int = 20):
         load_done_checker = ScrollEndChecker()
 
         for _ in range(max_try):
@@ -190,7 +197,8 @@ class SakaMessagePhotoSaver(SakaMessageSaver):
         self._move_mouse_to_scroll_position(roi)
         # pyautogui.sleep(0.15)
         pyautogui.drag(-1000, 0, 0.3, button='left')
-        pyautogui.sleep(1)
+        pyautogui.sleep(0.2)
+        self._move_mouse_to_out_of_roi(roi)
 
 
 if __name__ == '__main__':
