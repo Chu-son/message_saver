@@ -3,6 +3,7 @@
 import os
 import numpy as np
 
+import enum
 from typing import List
 import datetime
 import dataclasses
@@ -31,19 +32,42 @@ class Parameters:
 class ScrollEndChecker:
     DEBUG = False
 
+    class Criteria(enum.IntEnum):
+        TOP = enum.auto()
+        BOTTOM = enum.auto()
+        CENTER = enum.auto()
+        ALL = enum.auto()
 
-    def __init__(self, roi: List[int] = None):
-        self.roi = roi
+    # shape: [width, height]
+    def __init__(self, shape: List[int], criteria: Criteria, rate: float = 0.1):
+        self.roi = self.calculate_roi(shape, criteria, rate)
         self.prev_img = None
 
-    def check(self, img: np.ndarray, threshold: float = 0.0001) -> bool:
+    # return roi: [x, y, width, height]
+    def calculate_roi(self, shape: List[int], criteria: Criteria, rate: float) -> List[int]:
+        if criteria == self.Criteria.TOP:
+            return [0, 0, shape[0], int(shape[1] * rate)]
+        elif criteria == self.Criteria.BOTTOM:
+            return [0, int(shape[1] * (1 - rate)), shape[0], int(shape[1] * rate)]
+        elif criteria == self.Criteria.CENTER:
+            return [0, int(shape[1] / 2 - shape[1] * rate / 2), shape[0], int(shape[1] * rate)]
+        elif criteria == self.Criteria.ALL:
+            return [0, 0, shape[0], shape[1]]
+        else:
+            raise ValueError(
+                f'criteria is invalid value. criteria: {criteria}')
+
+    def check(self, img: np.ndarray, threshold: float = 0.001) -> bool:
         img = np.array(img)
 
         if self.roi is None:
             self.roi = [0, 0, img.shape[1], img.shape[0]]
 
+        # crop image. roi: [x, y, width, height]
         img = img[self.roi[1]:self.roi[1] + self.roi[3],
-                  self.roi[0]:self.roi[0] + self.roi[2]]
+                    self.roi[0]:self.roi[0] + self.roi[2]]
+        # img = img[self.roi[0]:self.roi[0] + self.roi[2],
+        #             self.roi[1]:self.roi[1] + self.roi[3]]
 
         if self.prev_img is None:
             self.prev_img = img
@@ -51,10 +75,10 @@ class ScrollEndChecker:
 
         # show image for debug
         if self.DEBUG:
-            cv2.namedWindow('check image', cv2.WINDOW_NORMAL)
             cv2.namedWindow('prev image', cv2.WINDOW_NORMAL)
-            cv2.imshow('check image', img)
+            cv2.namedWindow('check image', cv2.WINDOW_NORMAL)
             cv2.imshow('prev image', self.prev_img)
+            cv2.imshow('check image', img)
             cv2.waitKey(1)
 
         # if np.array_equal(self.prev_img, img):
@@ -114,7 +138,9 @@ class SakaMessageSaver:
         #              (1 - check_area_scale), self.params.ROI[2], self.params.ROI[3]]
         # check_roi = [int(x) for x in check_roi]
         # self.scroll_end_checker = ScrollEndChecker(roi=check_roi)
-        self.scroll_end_checker = ScrollEndChecker()
+        # self.scroll_end_checker = ScrollEndChecker()
+        self.scroll_end_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
+                                                   criteria=ScrollEndChecker.Criteria.ALL)
 
     def get_roi(self) -> List[int]:
         # get screen shot
@@ -165,7 +191,9 @@ class SakaMessageSaver:
         return img
 
     def _wait_for_image_load_done(self, max_try: int = 20):
-        load_done_checker = ScrollEndChecker()
+        load_done_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
+                                             criteria=ScrollEndChecker.Criteria.CENTER,
+                                             rate=0.15)
 
         for _ in range(max_try):
             screenshot = self._get_screenshot(self.params.ROI)
