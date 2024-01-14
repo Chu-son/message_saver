@@ -4,6 +4,7 @@ import enum
 import cv2
 
 from typing import List
+from saka_message_saver import logger
 
 
 class Criteria(enum.IntEnum):
@@ -87,7 +88,7 @@ class ScrollEndChecker:
 
         # check image difference.
         diff = self._calculate_diff(img)
-        print(f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self.threshold:.5f}. evaluate: {self._evaluate(diff, self.threshold)}")
+        logger.debug(f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self.threshold:.5f}. evaluate: {self._evaluate(diff, self.threshold)}")
 
         self._post_process(img)
 

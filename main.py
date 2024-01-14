@@ -2,7 +2,9 @@ import os
 import argparse
 
 import saka_message_saver
+from saka_message_saver import logger
 
+from logging import FileHandler
 
 parser = argparse.ArgumentParser()
 # params file --params_file or -p
@@ -20,7 +22,7 @@ parser.add_argument('--directory', '-d', type=str,
 # screen shot save sub directory --sub_directory
 parser.add_argument('--sub_directory', type=str, default='test')
 # screen shot save filename base --filename_base or -f
-parser.add_argument('--filename_base', '-f', type=str, default='image')
+parser.add_argument('--filename_base', '-f', type=str, default='')
 
 args = parser.parse_args()
 
@@ -33,6 +35,8 @@ if args.load_params:
 
 directory = os.path.join(args.directory, args.sub_directory,
                          saka_message_saver.ImageSaver.get_datetime())
+
+
 if args.photo:
     saver = saka_message_saver.SakaMessagePhotoSaver(directory=directory,
                                                      filename_base=args.filename_base,
@@ -45,4 +49,4 @@ saver.run()
 
 if args.save_params:
     params.save_to_yaml(args.params_file)
-    print(f'save params to {args.params_file}')
+    logger.info(f'save params to {args.params_file}')

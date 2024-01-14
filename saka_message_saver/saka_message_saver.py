@@ -11,7 +11,10 @@ import cv2
 
 from saka_message_saver.parameter.parameters import Parameters
 from saka_message_saver.different_checker.different_checker import ScrollEndChecker, Criteria, StaticDiffChecker
-from saka_message_saver import PROJECT_ROOT_PATH
+from saka_message_saver import PROJECT_ROOT_PATH, logger
+import saka_message_saver
+
+import time
 
 
 class ImageSaver:
@@ -22,6 +25,11 @@ class ImageSaver:
 
         self._prepare_directory()
 
+        file_handler = saka_message_saver.FileHandler(os.path.join(directory, 'log.log'))
+        file_handler.setLevel(saka_message_saver.DEBUG)
+        file_handler.setFormatter(saka_message_saver.formatter)
+        logger.addHandler(file_handler)
+
     def _prepare_directory(self):
         if not os.path.exists(self.directory):
             os.mkdir(self.directory)
@@ -29,8 +37,13 @@ class ImageSaver:
     def save(self, img: np.ndarray):
         img = np.array(img)
 
+        if self.filename_base == '':
+            filename_base = self.get_datetime()
+        else:
+            filename_base = self.filename_base
+
         filename = os.path.join(
-            self.directory, self.filename_base + str(self.index) + '.png')
+            self.directory, filename_base + "_No" + str(self.index) + '.png')
 
         cv2.imwrite(filename, img)
         self.index += 1
@@ -56,7 +69,7 @@ class SakaMessageSaver:
         # self.scroll_end_checker = ScrollEndChecker(roi=check_roi)
         # self.scroll_end_checker = ScrollEndChecker()
         self.scroll_end_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
-                                                   threshold=0.01,
+                                                   threshold=0.005,
                                                    criteria=Criteria.ALL)
 
         self.load_done_checkers = [
@@ -133,13 +146,15 @@ class SakaMessageSaver:
             pyautogui.sleep(0.2)
 
     def run(self):
+        elapsed_time_list = []
         while True:
-            print("--------------------")
-            print(f"scroll {self.image_saver.index} times.")
+            logger.info("--------------------")
+            logger.info(f"scroll {self.image_saver.index} times.")
+            start_time = time.time()
 
-            print('wait for image load done...')
+            logger.info('wait for image load done...')
             self._wait_for_image_load_done()
-            print('done.')
+            logger.info('done.')
 
             screenshot = self._get_screenshot(self.params.ROI)
 
@@ -149,8 +164,12 @@ class SakaMessageSaver:
                 break
 
             self._scroll(self.params.ROI)
+            elapsed_time_list.append(time.time() - start_time)
+            logger.info(f"elapsed time: {elapsed_time_list[-1]:.3f} [s]")
+            
 
-        print('FINISHED!!')
+        logger.info('FINISHED!!')
+        logger.info(f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
 
 
 class SakaMessagePhotoSaver(SakaMessageSaver):
