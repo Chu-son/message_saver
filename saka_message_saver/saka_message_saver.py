@@ -8,7 +8,6 @@ from typing import List
 import datetime
 import dataclasses
 import yaml
-import argparse
 
 import pyautogui
 import cv2
@@ -65,7 +64,7 @@ class ScrollEndChecker:
 
         # crop image. roi: [x, y, width, height]
         img = img[self.roi[1]:self.roi[1] + self.roi[3],
-                    self.roi[0]:self.roi[0] + self.roi[2]]
+                  self.roi[0]:self.roi[0] + self.roi[2]]
         # img = img[self.roi[0]:self.roi[0] + self.roi[2],
         #             self.roi[1]:self.roi[1] + self.roi[3]]
 
@@ -232,39 +231,3 @@ class SakaMessagePhotoSaver(SakaMessageSaver):
         pyautogui.drag(-1000, 0, 0.3, button='left')
         pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    # params file --params_file or -p
-    parser.add_argument('--params_file', '-p', type=str, default='params.yaml')
-    # save params --save_params or -s
-    parser.add_argument('--save_params', '-s', action='store_true')
-    # load params --load_params or -l
-    parser.add_argument('--load_params', '-l', action='store_true')
-    # photo mode --photo
-    parser.add_argument('--photo', action='store_true')
-
-    args = parser.parse_args()
-
-    params = Parameters()
-    if args.load_params:
-        if not os.path.exists(args.params_file):
-            raise FileNotFoundError(f'{args.params_file} is not found.')
-
-        params.load_from_yaml(args.params_file)
-
-    directory = f'../images/test/{ImageSaver.get_datetime()}'
-    filename_base = 'image'
-    if args.photo:
-        saver = SakaMessagePhotoSaver(directory=directory,
-                                      filename_base=filename_base,
-                                      params=params)
-    else:
-        saver = SakaMessageSaver(directory=directory,
-                                 filename_base=filename_base,
-                                 params=params)
-    saver.run()
-
-    if args.save_params:
-        params.save_to_yaml(args.params_file)
