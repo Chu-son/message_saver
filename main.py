@@ -31,7 +31,8 @@ if args.load_params:
 
     params.load_from_yaml(args.params_file)
 
-directory = os.path.join(args.directory, args.sub_directory)
+directory = os.path.join(args.directory, args.sub_directory,
+                         saka_message_saver.ImageSaver.get_datetime())
 if args.photo:
     saver = saka_message_saver.SakaMessagePhotoSaver(directory=directory,
                                                      filename_base=args.filename_base,
