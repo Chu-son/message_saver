@@ -56,17 +56,20 @@ class SakaMessageSaver:
         # self.scroll_end_checker = ScrollEndChecker(roi=check_roi)
         # self.scroll_end_checker = ScrollEndChecker()
         self.scroll_end_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
+                                                   threshold=0.01,
                                                    criteria=Criteria.ALL)
 
         self.load_done_checkers = [
             ScrollEndChecker(shape=self.params.ROI[2:4],
+                             threshold=0.01,
                              criteria=Criteria.CENTER,
                              rate=0.15),
-            # StaticDiffChecker(shape=self.params.ROI[2:4],
-            #                   static_img_path=os.path.join(
-            #                       PROJECT_ROOT_PATH, 'config', 'loading.png'),
-            #                   criteria=Criteria.CENTER,
-            #                   rate=0.15)
+            StaticDiffChecker(shape=self.params.ROI[2:4],
+                              threshold=0.1,
+                              static_img_path=os.path.join(
+                                  PROJECT_ROOT_PATH, 'config', 'loading.png'),
+                              criteria=Criteria.CENTER,
+                              rate=0.15)
         ]
 
     def get_roi(self) -> List[int]:
@@ -131,6 +134,7 @@ class SakaMessageSaver:
 
     def run(self):
         while True:
+            print("--------------------")
             print(f"scroll {self.image_saver.index} times.")
 
             print('wait for image load done...')
