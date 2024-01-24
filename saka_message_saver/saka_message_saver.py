@@ -62,19 +62,13 @@ class SakaMessageSaver:
         if self.params.ROI is None:
             self.params.ROI = self.get_roi()
 
-        # check_area_scale = 1 / 3
-        # check_roi = [0, self.params.ROI[3] *
-        #              (1 - check_area_scale), self.params.ROI[2], self.params.ROI[3]]
-        # check_roi = [int(x) for x in check_roi]
-        # self.scroll_end_checker = ScrollEndChecker(roi=check_roi)
-        # self.scroll_end_checker = ScrollEndChecker()
         self.scroll_end_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
                                                    threshold=0.005,
                                                    criteria=Criteria.ALL)
 
         self.load_done_checkers = [
             ScrollEndChecker(shape=self.params.ROI[2:4],
-                             threshold=0.01,
+                             threshold=0.005,
                              criteria=Criteria.CENTER,
                              rate=0.15),
             StaticDiffChecker(shape=self.params.ROI[2:4],
