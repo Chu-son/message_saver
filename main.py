@@ -7,7 +7,7 @@ from saka_message_saver import logger
 from logging import FileHandler
 
 
-def main():
+def get_parsed_args():
     parser = argparse.ArgumentParser()
     # params file --params_file or -p
     parser.add_argument('--params_file', '-p', type=str, default=os.path.join(
@@ -26,7 +26,14 @@ def main():
     # screen shot save filename base --filename_base or -f
     parser.add_argument('--filename_base', '-f', type=str, default='')
 
-    args = parser.parse_args()
+    # reference data setting --reference_data or -rf
+    parser.add_argument('--reference_data', '-rf', action='store_true')
+
+    return parser.parse_args()
+
+
+def main():
+    args = get_parsed_args()
 
     params = saka_message_saver.Parameters()
     if args.load_params:
@@ -36,13 +43,14 @@ def main():
         params.load_from_yaml(args.params_file)
 
     directory = os.path.join(args.directory, args.sub_directory,
-                            saka_message_saver.ImageSaver.get_datetime())
-
+                             saka_message_saver.ImageSaver.get_datetime())
 
     if args.photo:
         saver = saka_message_saver.SakaMessagePhotoSaver(directory=directory,
-                                                        filename_base=args.filename_base,
-                                                        params=params)
+                                                         filename_base=args.filename_base,
+                                                         params=params)
+    elif args.reference_data:
+        pass
     else:
         saver = saka_message_saver.SakaMessageSaver(directory=directory,
                                                     filename_base=args.filename_base,
