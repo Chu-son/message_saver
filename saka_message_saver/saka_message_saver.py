@@ -24,6 +24,8 @@ class ImageSaver:
         self.index = 0
 
         self._prepare_directory()
+        if self.filename_base == '':
+            self.filename_base = self.get_datetime()
 
         file_handler = saka_message_saver.FileHandler(os.path.join(directory, 'log.log'))
         file_handler.setLevel(saka_message_saver.DEBUG)
