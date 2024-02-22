@@ -118,3 +118,105 @@ class StaticDiffChecker(ScrollEndChecker):
 
     def _evaluate(self, diff: float, threshold: float) -> bool:
         return not super()._evaluate(diff, threshold)
+
+
+@dataclasses.dataclass
+class ImageComparerParam:
+    image_file_name: str
+    roi: List[int]  # [x, y, width, height]
+    threshold: float
+
+    def save_to_yaml(self, path: str):
+        with open(path, 'w') as f:
+            yaml.dump(dataclasses.asdict(self), f)
+
+    @classmethod
+    def load_from_yaml(cls, path: str):
+        with open(path, 'r') as f:
+            params = yaml.safe_load(f)
+
+        return cls(**params)
+
+
+class StaticImageComparer:
+    def __init__(self, dir_path: str):
+        self._yaml_name = "param.yaml"
+        self._dir_path = dir_path
+
+        # load from yaml
+        self._param = ImageComparerParam.load_from_yaml(
+            os.path.join(self._dir_path, self._yaml_name)
+        )
+        self._base_image = cv2.imread(
+            os.path.join(self._dir_path, self._param.image_file_name)
+        )
+        self._cropped_image = self._base_image[
+            self._param.roi[1]:self._param.roi[1] + self._param.roi[3],
+            self._param.roi[0]:self._param.roi[0] + self._param.roi[2]
+        ]
+
+    def _evaluate(self, diff: float, threshold: float) -> bool:
+        if diff < threshold:
+            return True
+
+        return False
+
+    def check(self, img: np.ndarray) -> bool:
+        img = img[
+            self._param.roi[1]:self._param.roi[1] + self._param.roi[3],
+            self._param.roi[0]:self._param.roi[0] + self._param.roi[2]
+        ]
+
+        diff = cv2.absdiff(self._cropped_image, img)
+        diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+        diff = diff.astype(np.float32)
+        diff = diff / 255.0
+        diff = np.mean(diff)
+
+        logger.debug(
+            f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self._param.threshold:.5f}. evaluate: {self._evaluate(diff, self._param.threshold)}")
+
+        return self._evaluate(diff, self._param.threshold)
+
+
+class RelativeStaticImageComparer:
+    def __init__(self, dir_path: str):
+        self._yaml_name = "param.yaml"
+        self._dir_path = dir_path
+
+        # load from yaml
+        self._param = ImageComparerParam.load_from_yaml(
+            os.path.join(self._dir_path, self._yaml_name)
+        )
+        self._base_image = cv2.imread(
+            os.path.join(self._dir_path, self._param.image_file_name)
+        )
+
+        self._cropped_image = None
+
+    def _evaluate(self, diff: float, threshold: float) -> bool:
+        if diff < threshold:
+            return True
+
+        return False
+
+    def check(self, img: np.ndarray) -> bool:
+        img = img[
+            self._param.roi[1]:self._param.roi[1] + self._param.roi[3],
+            self._param.roi[0]:self._param.roi[0] + self._param.roi[2]
+        ]
+
+        if self._cropped_image is None:
+            self._cropped_image = img
+            return False
+
+        diff = cv2.absdiff(self._cropped_image, img)
+        diff = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+        diff = diff.astype(np.float32)
+        diff = diff / 255.0
+        diff = np.mean(diff)
+
+        logger.debug(
+            f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self._param.threshold:.5f}. evaluate: {self._evaluate(diff, self._param.threshold)}")
+
+        return self._evaluate(diff, self._param.threshold)

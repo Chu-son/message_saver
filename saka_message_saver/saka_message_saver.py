@@ -8,6 +8,10 @@ import datetime
 
 import pyautogui
 import cv2
+import pyaudio
+import wave
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+
 import mss
 
 from saka_message_saver.parameter.parameters import Parameters
@@ -55,6 +59,84 @@ class ImageSaver:
     def get_datetime(cls) -> str:
         now = datetime.datetime.now()
         return now.strftime('%Y%m%d_%H%M%S')
+
+
+class MovieSaver(ImageSaver):
+    def __init__(self, directory: str, filename_base: str):
+        super().__init__(directory, filename_base)
+
+    def save(self, img: np.ndarray, length: float):
+        # record screen and audio.
+        video_filename = os.path.join(
+            self.directory, self.filename_base + "_No" + str(self.index) + '.mp4')
+        audio_filename = os.path.join(
+            self.directory, self.filename_base + "_No" + str(self.index) + '.wav')
+
+        # video setting
+        video_size = (img.shape[1], img.shape[0])
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        video_frame_rate = 20.0  # frames per second
+        out = cv2.VideoWriter(video_filename, fourcc, video_frame_rate,
+                              (video_size[0], video_size[1]))
+
+        # audio setting
+        CHUNK = 1024
+        FORMAT = pyaudio.paInt16
+        CHANNELS = 2
+        AUDIO_SAMPLE_RATE = 44100  # samples per second
+        audio = pyaudio.PyAudio()
+        stream = audio.open(format=FORMAT, channels=CHANNELS,
+                            rate=AUDIO_SAMPLE_RATE, input=True, frames_per_buffer=CHUNK)
+
+        # record
+        frames = []
+        start_time = time.time()
+        video_interval = 1.0 / video_frame_rate  # interval between video frames
+        audio_interval = 1.0 / AUDIO_SAMPLE_RATE  # interval between audio samples
+        next_video_time = start_time + video_interval
+        next_audio_time = start_time + audio_interval
+        while True:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            if elapsed_time > length:
+                break
+
+            # video
+            if current_time >= next_video_time:
+                screenshot = pyautogui.screenshot()
+                screenshot = np.array(screenshot)
+                screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
+                screenshot = cv2.resize(screenshot, video_size)
+                out.write(screenshot)
+                next_video_time += video_interval
+
+            # audio
+            if current_time >= next_audio_time:
+                data = stream.read(CHUNK)
+                frames.append(data)
+                next_audio_time += audio_interval
+
+        # save
+        out.release()
+        stream.stop_stream()
+        stream.close()
+        audio.terminate()
+
+        waveFile = wave.open(audio_filename, 'wb')
+        waveFile.setnchannels(CHANNELS)
+        waveFile.setsampwidth(audio.get_sample_size(FORMAT))
+        waveFile.setframerate(AUDIO_SAMPLE_RATE)
+        waveFile.writeframes(b''.join(frames))
+        waveFile.close()
+
+        # combine video and audio
+        video_clip = VideoFileClip(video_filename)
+        audio_clip = AudioFileClip(audio_filename)
+        video_clip = video_clip.set_audio(audio_clip)
+        video_clip.write_videofile(os.path.join(
+            self.directory, self.filename_base + "_No" + str(self.index) + '_output.mp4'))
+
+        self.index += 1
 
 
 class SakaMessageSaver:
@@ -180,3 +262,52 @@ class SakaMessagePhotoSaver(SakaMessageSaver):
         pyautogui.drag(-1000, 0, 0.3, button='left')
         pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
+
+
+class SakaMessageMovieSaver(SakaMessageSaver):
+    def __init__(self, directory: str, filename_base: str, params: Parameters):
+        super().__init__(directory, filename_base, params)
+
+    # override _scroll method. drag left.
+    def _scroll(self, roi: List[int]):
+        self._move_mouse_to_scroll_position(roi)
+        # pyautogui.sleep(0.15)
+        pyautogui.drag(-1000, 0, 0.3, button='left')
+        pyautogui.sleep(0.1)
+        self._move_mouse_to_out_of_roi(roi)
+
+    def _get_movie_length(self, roi: List[int]) -> int:
+        # get screen shot
+        img = pyautogui.screenshot(region=roi)
+        img = np.array(img)
+
+        # convert to numpy array
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        return img.shape[1]
+
+    def run(self):
+        elapsed_time_list = []
+        while True:
+            logger.info("--------------------")
+            logger.info(f"scroll {self.image_saver.index} times.")
+            start_time = time.time()
+
+            logger.info('wait for image load done...')
+            self._wait_for_image_load_done()
+            logger.info('done.')
+
+            screenshot = self._get_screenshot(self.params.ROI)
+
+            self.image_saver.save(screenshot)
+
+            if self.scroll_end_checker.check(screenshot):
+                break
+
+            self._scroll(self.params.ROI)
+            elapsed_time_list.append(time.time() - start_time)
+            logger.info(f"elapsed time: {elapsed_time_list[-1]:.3f} [s]")
+
+        logger.info('FINISHED!!')
+        logger.info(
+            f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
