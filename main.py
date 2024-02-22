@@ -1,5 +1,6 @@
 import os
 import argparse
+import shutil
 
 import saka_message_saver
 from saka_message_saver import logger
@@ -18,6 +19,8 @@ def get_parsed_args():
     parser.add_argument('--load_params', '-l', action='store_true')
     # photo mode --photo
     parser.add_argument('--photo', action='store_true')
+    # movie mode --movie
+    parser.add_argument('--movie', action='store_true')
     # screen shot save directory --directory or -d
     parser.add_argument('--directory', '-d', type=str,
                         default=os.path.join(saka_message_saver.PROJECT_ROOT_PATH, 'images'))
@@ -45,8 +48,16 @@ def main():
     directory = os.path.join(args.directory, args.sub_directory,
                              saka_message_saver.ImageSaver.get_datetime())
 
+    if args.photo and args.movie:
+        raise ValueError(
+            'photo and movie cannot be specified at the same time.')
+
     if args.photo:
         saver = saka_message_saver.SakaMessagePhotoSaver(directory=directory,
+                                                         filename_base=args.filename_base,
+                                                         params=params)
+    elif args.movie:
+        saver = saka_message_saver.SakaMessageMovieSaver(directory=directory,
                                                          filename_base=args.filename_base,
                                                          params=params)
     elif args.setting:
