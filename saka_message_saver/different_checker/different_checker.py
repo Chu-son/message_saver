@@ -2,6 +2,8 @@ import os
 import numpy as np
 import enum
 import cv2
+import dataclasses
+import yaml
 
 from typing import List
 from saka_message_saver import logger
@@ -88,7 +90,8 @@ class ScrollEndChecker:
 
         # check image difference.
         diff = self._calculate_diff(img)
-        logger.debug(f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self.threshold:.5f}. evaluate: {self._evaluate(diff, self.threshold)}")
+        logger.debug(
+            f"class: {self.__class__.__name__}. diff: {diff:.5f}. threshold: {self.threshold:.5f}. evaluate: {self._evaluate(diff, self.threshold)}")
 
         self._post_process(img)
 
