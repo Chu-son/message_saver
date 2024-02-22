@@ -26,8 +26,8 @@ def get_parsed_args():
     # screen shot save filename base --filename_base or -f
     parser.add_argument('--filename_base', '-f', type=str, default='')
 
-    # reference data setting --reference_data or -rf
-    parser.add_argument('--reference_data', '-rf', action='store_true')
+    # setting --setting
+    parser.add_argument('--setting', action='store_true')
 
     return parser.parse_args()
 
@@ -49,8 +49,8 @@ def main():
         saver = saka_message_saver.SakaMessagePhotoSaver(directory=directory,
                                                          filename_base=args.filename_base,
                                                          params=params)
-    elif args.reference_data:
-        pass
+    elif args.setting:
+        saver = saka_message_saver.SettingUI(params=params)
     else:
         saver = saka_message_saver.SakaMessageSaver(directory=directory,
                                                     filename_base=args.filename_base,
