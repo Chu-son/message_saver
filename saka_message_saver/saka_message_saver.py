@@ -225,6 +225,7 @@ class SakaMessageSaver:
             pyautogui.sleep(0.2)
 
     def run(self):
+        start_time_total = time.time()
         elapsed_time_list = []
         while True:
             logger.info("--------------------")
@@ -245,10 +246,12 @@ class SakaMessageSaver:
             self._scroll(self.params.ROI)
             elapsed_time_list.append(time.time() - start_time)
             logger.info(f"elapsed time: {elapsed_time_list[-1]:.3f} [s]")
-            
 
         logger.info('FINISHED!!')
-        logger.info(f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
+        logger.info(
+            f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
+        logger.info(
+            f"total time: {time.time() - start_time_total:.3f} [s]")
 
 
 class SakaMessagePhotoSaver(SakaMessageSaver):
