@@ -61,6 +61,8 @@ def main():
         saver.params.save_to_yaml(args.params_file)
         logger.info(f'save params to {args.params_file}')
 
+    shutil.copy(args.params_file, os.path.join(directory, 'params.yaml'))
+
 
 if __name__ == '__main__':
     try:
