@@ -8,6 +8,7 @@ import datetime
 
 import pyautogui
 import cv2
+import mss
 
 from saka_message_saver.parameter.parameters import Parameters
 from saka_message_saver.different_checker.different_checker import ScrollEndChecker, Criteria, StaticDiffChecker
@@ -120,12 +121,12 @@ class SakaMessageSaver:
         self._move_mouse_to_out_of_roi(roi)
 
     def _get_screenshot(self, roi: List[int]) -> np.ndarray:
-        # get screen shot
-        img = pyautogui.screenshot(region=roi)
-        img = np.array(img)
-
-        # convert to numpy array
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        # get screen shot by mss
+        monitor = {"top": roi[1], "left": roi[0],
+                     "width": roi[2], "height": roi[3]}
+        with mss.mss() as sct:
+            img = np.array(sct.grab(monitor))
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
         return img
 
