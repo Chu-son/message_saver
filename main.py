@@ -58,7 +58,7 @@ def main():
     saver.run()
 
     if args.save_params:
-        params.save_to_yaml(args.params_file)
+        saver.params.save_to_yaml(args.params_file)
         logger.info(f'save params to {args.params_file}')
 
 
