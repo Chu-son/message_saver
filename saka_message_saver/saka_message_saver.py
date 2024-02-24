@@ -271,38 +271,86 @@ class SakaMessageMovieSaver(SakaMessageSaver):
     def __init__(self, directory: str, filename_base: str, params: Parameters):
         super().__init__(directory, filename_base, params)
 
-    # override _scroll method. drag left.
+        self.load_done_checkers = [
+            ScrollEndChecker(shape=self.params.ROI[2:4],
+                             threshold=0.0002,
+                             criteria=Criteria.CENTER,
+                             rate=0.15),
+            # StaticDiffChecker(shape=self.params.ROI[2:4],
+            #                   threshold=0.1,
+            #                   static_img_path=os.path.join(
+            #                       PROJECT_ROOT_PATH, 'config', 'loading.png'),
+            #                   criteria=Criteria.CENTER,
+            #                   rate=0.15)
+        ]
+
+        self._get_recording_button_position()
+
     def _scroll(self, roi: List[int]):
         self._move_mouse_to_scroll_position(roi)
-        # pyautogui.sleep(0.15)
-        pyautogui.drag(-1000, 0, 0.3, button='left')
+        pyautogui.move(400, 0)
+        pyautogui.sleep(0.1)
+        pyautogui.drag(-1300, 0, 0.6, button='left')
+
         pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
 
-    def _get_movie_length(self, roi: List[int]) -> int:
-        # get screen shot
-        img = pyautogui.screenshot(region=roi)
+    def _get_recording_button_position(self):
+        # get center position of recording start and stop button by button image. use pyautogui method.
+        self._recording_start_button_position = pyautogui.locateCenterOnScreen(
+            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_start.png'))
+        self._recording_stop_button_position = pyautogui.locateCenterOnScreen(
+            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_stop.png'))
+
+        if self._recording_start_button_position is None or self._recording_stop_button_position is None:
+            raise ValueError('recording start or stop button is not found.')
+
+        # visualize button position
+        cv2.namedWindow("recording_buttons", cv2.WINDOW_NORMAL)
+        img = pyautogui.screenshot()
         img = np.array(img)
-
-        # convert to numpy array
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        cv2.circle(img, self._recording_start_button_position,
+                   10, (0, 0, 255), -1)
+        cv2.circle(img, self._recording_stop_button_position,
+                   10, (0, 255, 0), -1)
+        cv2.imshow("recording_buttons", img)
+        cv2.waitKey(0)
+        cv2.destroyWindow("recording_buttons")
 
-        return img.shape[1]
+    def _recording_start(self):
+        pyautogui.click(self._recording_start_button_position)
+        pyautogui.sleep(0.1)
+
+    def _recording_stop(self):
+        pyautogui.click(self._recording_stop_button_position)
+        pyautogui.sleep(0.1)
 
     def run(self):
+        movie_max_sec: int = 60 * 10  # [sec]
+        movie_end_check_interval: float = 1  # [sec]
+
+        start_time_total = time.time()
         elapsed_time_list = []
         while True:
             logger.info("--------------------")
             logger.info(f"scroll {self.image_saver.index} times.")
             start_time = time.time()
 
-            logger.info('wait for image load done...')
-            self._wait_for_image_load_done()
+            self._recording_start()
+
+            logger.info('wait for movie done...')
+            self._wait_for_image_load_done(
+                max_try=int(movie_max_sec / movie_end_check_interval),
+                continuous_times=3,
+                interval=movie_end_check_interval
+            )
             logger.info('done.')
 
-            screenshot = self._get_screenshot(self.params.ROI)
+            self._recording_stop()
 
-            self.image_saver.save(screenshot)
+            # for check scroll end
+            screenshot = self._get_screenshot(self.params.ROI)
 
             if self.scroll_end_checker.check(screenshot):
                 break
@@ -314,3 +362,5 @@ class SakaMessageMovieSaver(SakaMessageSaver):
         logger.info('FINISHED!!')
         logger.info(
             f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
+        logger.info(
+            f"total time: {time.time() - start_time_total:.3f} [s]")
