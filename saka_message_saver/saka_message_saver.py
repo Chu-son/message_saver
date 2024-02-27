@@ -212,17 +212,21 @@ class SakaMessageSaver:
 
         return img
 
-    def _wait_for_image_load_done(self, max_try: int = 20):
-        # load_done_checker = ScrollEndChecker(shape=self.params.ROI[2:4],
-        #                                      criteria=Criteria.CENTER,
-        #                                      rate=0.15)
-
+    def _wait_for_image_load_done(self, max_try: int = 20, continuous_times: int = 2, interval: float = 0.5):
+        continuous_count = 0
         for _ in range(max_try):
             screenshot = self._get_screenshot(self.params.ROI)
-            # if load_done_checker.check(screenshot):
+
             if all([checker.check(screenshot) for checker in self.load_done_checkers]):
-                break
-            pyautogui.sleep(0.2)
+                continuous_count += 1
+                if continuous_count >= continuous_times:
+                    return
+            else:
+                continuous_count = 0
+
+            pyautogui.sleep(interval)
+
+        logger.warning('image load done check failed.')
 
     def run(self):
         start_time_total = time.time()
