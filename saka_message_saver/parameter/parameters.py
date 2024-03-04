@@ -1,18 +1,30 @@
+import os
 import dataclasses
 import yaml
 
 from typing import List
 
+import saka_message_saver
+
 
 @dataclasses.dataclass
 class Parameters:
     ROI: List[int] = None
+    base_directory: str = os.path.join(
+        saka_message_saver.PROJECT_ROOT_PATH, 'images')
+    directory: str = base_directory
+    sub_directory: str = "test"
+    filename_base: str = ""
 
-    def load_from_yaml(self, filename: str):
+    loop_times: int = -1
+    reverse: bool = False
+
+    @classmethod
+    def load_from_yaml(cls, filename: str):
         with open(filename, 'r') as f:
             params = yaml.safe_load(f)
 
-        self.ROI = params['ROI']
+        return cls(**params)
 
     def save_to_yaml(self, filename: str):
         with open(filename, 'w') as f:
