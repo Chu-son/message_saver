@@ -32,7 +32,8 @@ class ImageSaver:
         if self.filename_base == '':
             self.filename_base = self.get_datetime()
 
-        file_handler = saka_message_saver.FileHandler(os.path.join(directory, 'log.log'))
+        file_handler = saka_message_saver.FileHandler(
+            os.path.join(directory, 'log.log'))
         file_handler.setLevel(saka_message_saver.DEBUG)
         file_handler.setFormatter(saka_message_saver.formatter)
         logger.addHandler(file_handler)
@@ -140,8 +141,8 @@ class MovieSaver(ImageSaver):
 
 
 class SakaMessageSaver:
-    def __init__(self, directory: str, filename_base: str, params: Parameters):
-        self.image_saver = ImageSaver(directory, filename_base)
+    def __init__(self, params: Parameters):
+        self.image_saver = ImageSaver(params.directory, params.filename_base)
         self.params = params
 
         if self.params.ROI is None:
@@ -153,16 +154,19 @@ class SakaMessageSaver:
 
         self.load_done_checkers = [
             ScrollEndChecker(shape=self.params.ROI[2:4],
-                             threshold=0.005,
+                             threshold=0.0001,
                              criteria=Criteria.CENTER,
                              rate=0.15),
-            StaticDiffChecker(shape=self.params.ROI[2:4],
-                              threshold=0.1,
-                              static_img_path=os.path.join(
-                                  PROJECT_ROOT_PATH, 'config', 'loading.png'),
-                              criteria=Criteria.CENTER,
-                              rate=0.15)
+            # StaticDiffChecker(shape=self.params.ROI[2:4],
+            #                   threshold=0.1,
+            #                   static_img_path=os.path.join(
+            #                       PROJECT_ROOT_PATH, 'config', 'loading.png'),
+            #                   criteria=Criteria.CENTER,
+            #                   rate=0.15)
         ]
+
+        self._reverse_coefficient = -1 if self.params.reverse else 1
+        logger.info(f"reverse: {self.params.reverse}")
 
     def get_roi(self) -> List[int]:
         # get screen shot
@@ -196,16 +200,34 @@ class SakaMessageSaver:
         pyautogui.moveTo(roi[0] + roi[2], roi[1] + roi[3])
 
     def _scroll(self, roi: List[int]):
+        self._vscroll(roi, scroll_height_rate=0.8, scroll_width_rate=0.03)
+
+    # vertical scroll
+    def _vscroll(self, roi: List[int], scroll_height_rate: float = 0.8, scroll_width_rate: float = 0.05):
         self._move_mouse_to_scroll_position(roi)
-        # pyautogui.sleep(0.15)
-        pyautogui.scroll(-10)
+
+        drag_start_position = [roi[0] + roi[2] * scroll_width_rate,
+                               roi[1] + roi[3] * scroll_height_rate]
+        drag_end_position = [roi[0] + roi[2] * scroll_width_rate,
+                             roi[1] + roi[3] * (1 - scroll_height_rate)]
+
+        if self._reverse_coefficient == -1:
+            drag_start_position, drag_end_position = drag_end_position, drag_start_position
+
+        pyautogui.moveTo(drag_start_position[0], drag_start_position[1])
+        pyautogui.dragTo(
+            drag_end_position[0], drag_end_position[1], 1.0, button='left')
+
         pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
+
+    def _hscroll(self, roi: List[int], scroll_width_rate: float = 0.85, scroll_height_rate: float = 0.05):
+        raise NotImplementedError
 
     def _get_screenshot(self, roi: List[int]) -> np.ndarray:
         # get screen shot by mss
         monitor = {"top": roi[1], "left": roi[0],
-                     "width": roi[2], "height": roi[3]}
+                   "width": roi[2], "height": roi[3]}
         with mss.mss() as sct:
             img = np.array(sct.grab(monitor))
             img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
@@ -228,9 +250,16 @@ class SakaMessageSaver:
 
         logger.warning('image load done check failed.')
 
+    def _double_check_scroll(self, roi: List[int]):
+        pass
+
+    def _error_reset(self):
+        pass
+
     def run(self):
         start_time_total = time.time()
         elapsed_time_list = []
+        loop_count = 0
         while True:
             logger.info("--------------------")
             logger.info(f"scroll {self.image_saver.index} times.")
@@ -245,6 +274,14 @@ class SakaMessageSaver:
             self.image_saver.save(screenshot)
 
             if self.scroll_end_checker.check(screenshot):
+                self._double_check_scroll(self.params.ROI)
+                if self.scroll_end_checker.check(self._get_screenshot(self.params.ROI)):
+                    break
+                else:
+                    self._error_reset()
+
+            loop_count += 1
+            if self.params.loop_times > 0 and loop_count >= self.params.loop_times:
                 break
 
             self._scroll(self.params.ROI)
@@ -259,21 +296,36 @@ class SakaMessageSaver:
 
 
 class SakaMessagePhotoSaver(SakaMessageSaver):
-    def __init__(self, directory: str, filename_base: str, params: Parameters):
-        super().__init__(directory, filename_base, params)
+    def __init__(self, params: Parameters):
+        super().__init__(params)
 
-    # override _scroll method. drag left.
+    def _double_check_scroll(self, roi: List[int]):
+        self._vscroll(roi, scroll_height_rate=0.75, scroll_width_rate=0.5)
+        pyautogui.sleep(2)
+
+    def _error_reset(self):
+        self._move_mouse_to_scroll_position(self.params.ROI)
+        # pyautogui.doubleClick()
+        pyautogui.click(clicks=4, interval=0.1)
+        pyautogui.sleep(1)
+
     def _scroll(self, roi: List[int]):
         self._move_mouse_to_scroll_position(roi)
-        # pyautogui.sleep(0.15)
-        pyautogui.drag(-1000, 0, 0.3, button='left')
+        pyautogui.move(450 * self._reverse_coefficient, 0)
+        # pyautogui.sleep(0.1)
+        # pyautogui.drag(-1300 * self._reverse_coefficient,
+        #                0, 0.8, button='left')
+        pyautogui.mouseDown()
+        pyautogui.move(-1300 * self._reverse_coefficient, 0, 0.8)
+        pyautogui.mouseUp()
+
         pyautogui.sleep(0.1)
         self._move_mouse_to_out_of_roi(roi)
 
 
-class SakaMessageMovieSaver(SakaMessageSaver):
-    def __init__(self, directory: str, filename_base: str, params: Parameters):
-        super().__init__(directory, filename_base, params)
+class SakaMessageMovieSaver(SakaMessagePhotoSaver):
+    def __init__(self, params: Parameters):
+        super().__init__(params)
 
         self.load_done_checkers = [
             ScrollEndChecker(shape=self.params.ROI[2:4],
@@ -290,14 +342,14 @@ class SakaMessageMovieSaver(SakaMessageSaver):
 
         self._get_recording_button_position()
 
-    def _scroll(self, roi: List[int]):
-        self._move_mouse_to_scroll_position(roi)
-        pyautogui.move(400, 0)
-        pyautogui.sleep(0.1)
-        pyautogui.drag(-1300, 0, 0.6, button='left')
+    # def _scroll(self, roi: List[int]):
+    #     self._move_mouse_to_scroll_position(roi)
+    #     pyautogui.move(400, 0)
+    #     pyautogui.sleep(0.1)
+    #     pyautogui.drag(-1300, 0, 0.6, button='left')
 
-        pyautogui.sleep(0.1)
-        self._move_mouse_to_out_of_roi(roi)
+    #     pyautogui.sleep(0.1)
+    #     self._move_mouse_to_out_of_roi(roi)
 
     def _get_recording_button_position(self):
         # get center position of recording start and stop button by button image. use pyautogui method.
@@ -336,9 +388,10 @@ class SakaMessageMovieSaver(SakaMessageSaver):
 
         start_time_total = time.time()
         elapsed_time_list = []
+        loop_count = 0
         while True:
             logger.info("--------------------")
-            logger.info(f"scroll {self.image_saver.index} times.")
+            logger.info(f"scroll {loop_count} times.")
             start_time = time.time()
 
             self._recording_start()
@@ -359,9 +412,12 @@ class SakaMessageMovieSaver(SakaMessageSaver):
             if self.scroll_end_checker.check(screenshot):
                 break
 
-            self._scroll(self.params.ROI)
             elapsed_time_list.append(time.time() - start_time)
             logger.info(f"elapsed time: {elapsed_time_list[-1]:.3f} [s]")
+
+            pyautogui.sleep(3)
+            self._scroll(self.params.ROI)
+            loop_count += 1
 
         logger.info('FINISHED!!')
         logger.info(
