@@ -18,6 +18,7 @@ class Parameters:
 
     loop_times: int = -1
     reverse: bool = False
+    start_index: int = 0
 
     @classmethod
     def load_from_yaml(cls, filename: str):

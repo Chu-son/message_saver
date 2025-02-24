@@ -23,10 +23,10 @@ import time
 
 
 class ImageSaver:
-    def __init__(self, directory: str, filename_base: str):
+    def __init__(self, directory: str, filename_base: str, start_index: int):
         self.directory = directory
         self.filename_base = filename_base
-        self.index = 0
+        self.index = start_index
 
         self._prepare_directory()
         if self.filename_base == '':
@@ -63,8 +63,8 @@ class ImageSaver:
 
 
 class MovieSaver(ImageSaver):
-    def __init__(self, directory: str, filename_base: str):
-        super().__init__(directory, filename_base)
+    def __init__(self, directory: str, filename_base: str, start_index: int):
+        super().__init__(directory, filename_base, start_index)
 
     def save(self, img: np.ndarray, length: float):
         # record screen and audio.
@@ -142,7 +142,7 @@ class MovieSaver(ImageSaver):
 
 class SakaMessageSaver:
     def __init__(self, params: Parameters):
-        self.image_saver = ImageSaver(params.directory, params.filename_base)
+        self.image_saver = ImageSaver(params.directory, params.filename_base, params.start_index)
         self.params = params
 
         if self.params.ROI is None:
@@ -354,9 +354,11 @@ class SakaMessageMovieSaver(SakaMessagePhotoSaver):
     def _get_recording_button_position(self):
         # get center position of recording start and stop button by button image. use pyautogui method.
         self._recording_start_button_position = pyautogui.locateCenterOnScreen(
-            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_start.png'))
+            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_start.png'),grayscale=True, confidence=0.8)
+        logger.info(f"recording start button position: {self._recording_start_button_position}")
         self._recording_stop_button_position = pyautogui.locateCenterOnScreen(
-            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_stop.png'))
+            os.path.join(PROJECT_ROOT_PATH, 'config', 'recording_stop.png'), grayscale=True, confidence=0.8)
+        logger.info(f"recording stop button position: {self._recording_stop_button_position}")
 
         if self._recording_start_button_position is None or self._recording_stop_button_position is None:
             raise ValueError('recording start or stop button is not found.')
