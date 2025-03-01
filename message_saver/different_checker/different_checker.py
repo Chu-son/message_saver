@@ -6,7 +6,7 @@ import dataclasses
 import yaml
 
 from typing import List
-from saka_message_saver import logger
+from message_saver import logger
 
 
 class Criteria(enum.IntEnum):

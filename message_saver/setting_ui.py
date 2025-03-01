@@ -4,7 +4,7 @@ import dataclasses
 
 import tkinter as tk
 import tkinter.ttk as ttk
-from saka_message_saver.parameter.parameters import Parameters
+from message_saver.parameter.parameters import Parameters
 
 import pyautogui
 import cv2
@@ -23,7 +23,7 @@ class SettingUI:
         self.params = params
 
         self.root = tk.Tk()
-        self.root.title('Saka Message Saver Setting')
+        self.root.title('Message Saver Setting')
 
         self.widgets = []
 

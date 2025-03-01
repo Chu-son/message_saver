@@ -18,6 +18,6 @@ stream_handler.setLevel(DEBUG)
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-from .saka_message_saver import *
+from .message_saver import *
 from .parameter.parameters import *
 from .setting_ui import *

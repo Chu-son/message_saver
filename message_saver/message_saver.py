@@ -14,10 +14,10 @@ from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 
 import mss
 
-from saka_message_saver.parameter.parameters import Parameters
-from saka_message_saver.different_checker.different_checker import ScrollEndChecker, Criteria, StaticDiffChecker
-from saka_message_saver import PROJECT_ROOT_PATH, logger
-import saka_message_saver
+from message_saver.parameter.parameters import Parameters
+from message_saver.different_checker.different_checker import ScrollEndChecker, Criteria, StaticDiffChecker
+from message_saver import PROJECT_ROOT_PATH, logger
+import message_saver
 
 import time
 
@@ -32,10 +32,10 @@ class ImageSaver:
         if self.filename_base == '':
             self.filename_base = self.get_datetime()
 
-        file_handler = saka_message_saver.FileHandler(
+        file_handler = message_saver.FileHandler(
             os.path.join(directory, 'log.log'))
-        file_handler.setLevel(saka_message_saver.DEBUG)
-        file_handler.setFormatter(saka_message_saver.formatter)
+        file_handler.setLevel(message_saver.DEBUG)
+        file_handler.setFormatter(message_saver.formatter)
         logger.addHandler(file_handler)
 
     def _prepare_directory(self):
@@ -140,7 +140,7 @@ class MovieSaver(ImageSaver):
         self.index += 1
 
 
-class SakaMessageSaver:
+class MessageSaver:
     def __init__(self, params: Parameters):
         self.image_saver = ImageSaver(params.directory, params.filename_base, params.start_index)
         self.params = params
@@ -201,6 +201,7 @@ class SakaMessageSaver:
 
     def _scroll(self, roi: List[int]):
         self._vscroll(roi, scroll_height_rate=0.8, scroll_width_rate=0.03)
+        # self._vscroll(roi, scroll_height_rate=0.8, scroll_width_rate=0.26)
 
     # vertical scroll
     def _vscroll(self, roi: List[int], scroll_height_rate: float = 0.8, scroll_width_rate: float = 0.05):
@@ -295,7 +296,7 @@ class SakaMessageSaver:
             f"total time: {time.time() - start_time_total:.3f} [s]")
 
 
-class SakaMessagePhotoSaver(SakaMessageSaver):
+class MessagePhotoSaver(MessageSaver):
     def __init__(self, params: Parameters):
         super().__init__(params)
 
@@ -323,7 +324,7 @@ class SakaMessagePhotoSaver(SakaMessageSaver):
         self._move_mouse_to_out_of_roi(roi)
 
 
-class SakaMessageMovieSaver(SakaMessagePhotoSaver):
+class MessageMovieSaver(MessagePhotoSaver):
     def __init__(self, params: Parameters):
         super().__init__(params)
 
@@ -401,7 +402,7 @@ class SakaMessageMovieSaver(SakaMessagePhotoSaver):
             logger.info('wait for movie done...')
             self._wait_for_image_load_done(
                 max_try=int(movie_max_sec / movie_end_check_interval),
-                continuous_times=3,
+                continuous_times=5,
                 interval=movie_end_check_interval
             )
             logger.info('done.')
@@ -423,6 +424,6 @@ class SakaMessageMovieSaver(SakaMessagePhotoSaver):
 
         logger.info('FINISHED!!')
         logger.info(
-            f"average elapsed time: {np.mean(elapsed_time_list):.3f} [s]")
+            f"average elapsed time: {np.mean(elapsed_time_list)::.3f} [s]")
         logger.info(
             f"total time: {time.time() - start_time_total:.3f} [s]")

@@ -2,8 +2,8 @@ import os
 import argparse
 import shutil
 
-import saka_message_saver
-from saka_message_saver import logger
+import message_saver
+from message_saver import logger
 
 from logging import FileHandler
 
@@ -12,7 +12,7 @@ def get_parsed_args():
     parser = argparse.ArgumentParser()
     # params directory --params_directory
     parser.add_argument('--params_directory', type=str, default=os.path.join(
-        saka_message_saver.PROJECT_ROOT_PATH, 'config'))
+        message_saver.PROJECT_ROOT_PATH, 'config'))
     # params filename --params_filename
     parser.add_argument('--params_filename', type=str, default='params.yaml')
     # save params --save_params or -s
@@ -28,7 +28,7 @@ def get_parsed_args():
 
     # screen shot save directory --directory or -d
     parser.add_argument('--directory', '-d', type=str,
-                        default=os.path.join(saka_message_saver.PROJECT_ROOT_PATH, 'images'))
+                        default=os.path.join(message_saver.PROJECT_ROOT_PATH, 'images'))
     # screen shot save sub directory --sub_directory
     parser.add_argument('--sub_directory', type=str, default='test')
     # screen shot save filename base --filename_base or -f
@@ -52,10 +52,10 @@ def main():
         if not os.path.exists(params_file_path):
             raise FileNotFoundError(f'{params_file_path} is not found.')
 
-        params = saka_message_saver.Parameters.load_from_yaml(params_file_path)
+        params = message_saver.Parameters.load_from_yaml(params_file_path)
     else:
         logger.info('use default params')
-        params = saka_message_saver.Parameters(
+        params = message_saver.Parameters(
             directory=args.directory,
             sub_directory=args.sub_directory,
             filename_base=args.filename_base,
@@ -65,7 +65,7 @@ def main():
 
     params.directory = os.path.join(
         params.base_directory, params.sub_directory,
-        saka_message_saver.ImageSaver.get_datetime()
+        message_saver.ImageSaver.get_datetime()
     )
 
     if args.photo and args.movie:
@@ -76,16 +76,16 @@ def main():
 
     if args.photo:
         logger.info('photo mode')
-        saver = saka_message_saver.SakaMessagePhotoSaver(params=params)
+        saver = message_saver.MessagePhotoSaver(params=params)
     elif args.movie:
         logger.info('movie mode')
-        saver = saka_message_saver.SakaMessageMovieSaver(params=params)
+        saver = message_saver.MessageMovieSaver(params=params)
     elif args.setting:
         logger.info('setting mode')
-        saver = saka_message_saver.SettingUI(params=params)
+        saver = message_saver.SettingUI(params=params)
     else:
         logger.info('message mode')
-        saver = saka_message_saver.SakaMessageSaver(params=params)
+        saver = message_saver.MessageSaver(params=params)
     saver.run()
 
     if args.save_params:

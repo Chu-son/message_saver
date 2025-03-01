@@ -4,14 +4,14 @@ import yaml
 
 from typing import List
 
-import saka_message_saver
+import message_saver
 
 
 @dataclasses.dataclass
 class Parameters:
     ROI: List[int] = None
     base_directory: str = os.path.join(
-        saka_message_saver.PROJECT_ROOT_PATH, 'images')
+        message_saver.PROJECT_ROOT_PATH, 'images')
     directory: str = base_directory
     sub_directory: str = "test"
     filename_base: str = ""
